@@ -51,16 +51,17 @@ The `COEBiddingResultsPrices.csv` dataset shows the result of each COE bidding e
 
 ##### Understanding relationships between fields
 
-        POLICY                             MARKET
-   (set by LTA)                   (buyers, mostly via dealers)
-         │                                   │
-       quota  ─────────►  AUCTION  ◄───── bids_received
-                             │
-               ┌─────────────┴─────────────┐
-           premium                    bids_success
-     (clearing price)               (≤ quota; any leftover
-                                     rolls into later exercises)
-
+```text
+     POLICY                             MARKET
+(set by LTA)                   (buyers, mostly via dealers)
+      │                                   │
+    quota  ─────────►  AUCTION  ◄───── bids_received
+                          │
+            ┌─────────────┴─────────────┐
+        premium                    bids_success
+  (clearing price)               (≤ quota; any leftover
+                                  rolls into later exercises)
+```
 
 - **Supply vs demand:** `quota` is the supply and `bids_received` is the demand. Their ratio shows how competitive an exercise was.
 - **Price discovery:** `premium` is the lowest bid that still won. Every successful bidder pays this same price, not the amount they bid (a uniform-price auction).
@@ -72,7 +73,8 @@ The `COEBiddingResultsPrices.csv` dataset shows the result of each COE bidding e
 
 ### 2.2 Annual Motor Vehicle Population
 
-The `AnnualMotorVehiclePopulationbyVehicleType.csv` dataset shows how many vehicles are on the road for each vehicle type and for the respective years. There are **412 rows** where each row represents the population of one vehicle type for that year, from 2005 to 2024. 
+The `AnnualMotorVehiclePopulationbyVehicleType.csv` dataset shows how many vehicles are on the road for each vehicle type and for the respective years. There are **412 rows** where each row represents the population of one vehicle type for that year, from 2005 to 2024.
+
 | Field | Type | Description | Values / example | Role |
 |---|---|---|---|---|
 | `year` | Integer | The year of the count (check with LTA whether this is the year-end figure) | `2005` to `2024` | Time |
@@ -81,8 +83,8 @@ The `AnnualMotorVehiclePopulationbyVehicleType.csv` dataset shows how many vehic
 | `number` | Integer | Number of registered vehicles | 274 to 540,063 | **Stock** (outcom
 
 ##### Vehicle Groups and Types
-| `category` | `type`s |
-|---|---|
+| `category` | `types` |
+| --- | --- |
 | Cars and Station-wagons | Private cars, Company cars, Tuition cars, Off peak cars, Rental cars *(2005–2012)*, Private Hire (Self-Drive) cars *(2013–2024)*, Private Hire (Chauffeur) cars *(2013–2024)* |
 | Taxis | Taxis |
 | Motorcycles and Scooters | Motorcycles and Scooters |
@@ -98,13 +100,14 @@ The `AnnualMotorVehiclePopulationbyVehicleType.csv` dataset shows how many vehic
 
 ### 2.3 Interaction between Datasets
 
-   COE bidding (flow, twice a month)             Vehicle population (stock, yearly)
+```text
+COE bidding (flow, twice a month)             Vehicle population (stock, yearly)
 
-   bids_success  ── new vehicles registered ──►  number (this year)
-                                                   =  number (last year)
-   quota  ◄── set mainly from ────────────────     +  new registrations
-              deregistrations                      −  deregistrations
-
+bids_success  ── new vehicles registered ──►  number (this year)
+                                                =  number (last year)
+quota  ◄── set mainly from ────────────────     +  new registrations
+           deregistrations                      −  deregistrations
+```
 
 **Flow and stock:** COEs allocated during a year add vehicles to the population. Vehicles that are deregistered remove them. So the year-on-year change in `number` is roughly new registrations minus deregistrations.
 - **Checking the policy against what happened:** the bidding data shows the supply the policy allowed. The population data shows what that supply produced. Comparing them shows whether the growth limit held in practice.
@@ -122,7 +125,7 @@ The `AnnualMotorVehiclePopulationbyVehicleType.csv` dataset shows how many vehic
               
 ---
 
-## 3. Stakeholder Perspectives
+## 3. Stakeholders
 
 ### 3.1 Policymaker
 
