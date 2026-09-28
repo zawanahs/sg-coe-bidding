@@ -165,3 +165,75 @@ quota  ◄── set mainly from ───────────────�
 - Most buyers get a COE through a dealer package, so what they actually pay may not follow the QP exactly.
 - The premium is only one part of a car's cost. Other costs (the car's own price, taxes and fees) are not in these datasets.
 - The population data counts vehicles, not new registrations or deregistrations. It can only hint at future supply, not predict it exactly.
+
+---
+
+# 4. Data Exploration
+
+The profiling and cleaning steps are in [`code/data-cleaning.ipynb`](code/data-cleaning.ipynb). It reads both files from `data/` and does not change them.
+
+## 4.1 What Was Checked
+
+For each dataset, the notebook checks:
+- **Formatting:** nulls, empty strings, leading or trailing spaces, and numbers stored as text
+- **Grain:** whether each row is unique on its expected key
+- **Time coverage:** the date range and any gaps in it
+- **Numeric profile:** min, max, percentiles, skew, zeros and negatives
+- **Business rules:** for example, `bids_success` should never be more than `quota` or `bids_received`
+- **Suspicious values:** unusually large jumps between one period and the next
+
+## 4.2 Key Facts About the Data
+
+**COE Bidding Results**
+
+| Check | Result |
+|---|---|
+| Grain | One row per `month` × `bidding_no` × `vehicle_class`, with no duplicates. Every exercise has all 5 categories. |
+| Formatting | No nulls, blanks or stray spaces. The only problem is the thousands separators in `bids_success` and `bids_received`. |
+| Time coverage | 198 months, not 201: **April to June 2020 are missing** because bidding was suspended during the COVID-19 circuit breaker. |
+| Business rules | `bids_success` never exceeds `quota` or `bids_received`. About 81% of exercises leave a few COEs unallocated (median 4). |
+| Distributions | Quota and bids are right-skewed. Premium has two groups: Category D (motorcycles, median about $6k) sits far below the car categories (median about $49k to $70k). |
+| Round numbers | About 19% of premiums end in `000` or `001`. This is expected, because bidders choose round numbers. |
+
+**Annual Motor Vehicle Population**
+
+| Check | Result |
+|---|---|
+| Grain | One row per `year` × `category` × `type`, with no duplicates. |
+| Formatting | No nulls, blanks or stray spaces. All values in `number` are whole numbers. |
+| Time coverage | 2005 to 2024 with no gaps. There are 20 types per year up to 2012 and 21 from 2013, because of the change from *Rental cars* to the two *Private Hire* types. |
+| Distributions | Heavily right-skewed (median about 9.5k, max 540k), because *Private cars* is much larger than every other type. |
+| Naming | *Motorcycles and **S**cooters* (a category) and *Motorcycles and **s**cooters* (a type under Tax Exempted Vehicles) differ only in capitalisation. Don't join on `type` alone. |
+
+## 4.3 Issues Found
+
+| Severity | Dataset | Issue |
+|---|---|---|
+| 🔴 High | COE | **2010-01, exercise 2, Category D:** `premium` = 20,090. It matches Category C's premium in the same exercise. Category D was 889 the exercise before and 852 the exercise after. |
+| 🔴 High | COE | **2010-02, exercise 1, Category B:** `quota` = 1,154. It matches Category A's quota in the same exercise. Category B's quota is about 690 in the exercises around it. The wrong value makes this the only undersubscribed exercise in the data and the one with the largest unallocated gap (464). |
+| 🟠 Medium | COE | No bidding exercises from April to June 2020. |
+| 🟡 Low | Population | In 2013, *Goods-cum-passenger vehicles* dropped 23.6% and tax-exempted *Motorcycles and scooters* dropped 23.9%. These happen in the same year the car types were redefined, so they are likely reclassifications, not real changes in the number of vehicles. |
+
+Both high-severity values look like they were copied from a neighbouring row. They should be checked against LTA's published results.
+
+## 4.4 Cleaning Done
+
+| Step | How |
+|---|---|
+| Removed thousands separators | `pd.read_csv(..., thousands=',')` |
+| Parsed `month` as a date | `pd.to_datetime(coe['month'])` |
+| Allowed missing values in the COE count and price columns | `quota`, `bids_success`, `bids_received` and `premium` converted to nullable integers (`Int64`) |
+| Set the 2 suspicious values to missing | Category D `premium` (2010-01, exercise 2) and Category B `quota` (2010-02, exercise 1) set to `pd.NA`. They were not replaced with an estimate. |
+
+No rows were removed. The cleaned data is only held in the notebook as `coe_clean` and `pop_clean`. It is not saved to a file.
+
+## 4.5 Things to Keep in Mind When Analysing
+
+- **Split by `vehicle_class`.** Across all rows, quota and premium look unrelated (r ≈ −0.07). Within each category, a bigger quota goes with a lower premium (Spearman: E −0.83, B −0.50, C −0.37, A −0.30). Category D is the exception (+0.29).
+- **Categories A, B, C and E move together** (premium correlation ≥ 0.9), and Category E tracks B almost exactly. **Category D moves largely on its own** (r ≈ 0.5).
+- **Allow for the 2020 gap** when calculating lags, the 3-month PQP or seasonality. The exercises either side of it are not consecutive.
+- **2020 and 2026 cover only 9 months each**, so don't compare their yearly totals directly with full years.
+- **Treat 2012 → 2013 as a break** in the population series.
+- **The two exercises in a month are almost the same:** the median premium change from exercise 1 to exercise 2 is under 1% in every category.
+
+
