@@ -170,7 +170,7 @@ quota  ◄── set mainly from ───────────────�
 
 # 4. Data Exploration
 
-The profiling and cleaning steps are in [`code/data-cleaning.ipynb`](code/data-cleaning.ipynb). It reads both files from `data/` and does not change them.
+The profiling and cleaning steps are in [`code/data-cleaning.ipynb`](code/data-cleaning.ipynb). It reads both files from `data/`, charts the distribution of each numeric field, and saves cleaned copies as new `_clean.csv` files. The original files are not changed.
 
 ## 4.1 What Was Checked
 
@@ -200,8 +200,8 @@ For each dataset, the checks cover the following:
 ## 4.3 Issues Found
 
 | Severity | Dataset | Issue |
-|---|---|---|
-| 🔴 High | COE | **2010-01, exercise 2, Category D:** `premium` = 20,090. It matches Category C's premium in the same exercise. Category D was 889 the exercise before and 852 the exercise after. |
+| --- | --- | --- |
+| 🔴 High | COE | **2010-01, exercise 2, Category D:** `premium` = 20,090. It matches Category -C's premium in the same exercise. Category D was 889 the exercise before and 852 the exercise after. |
 | 🔴 High | COE | **2010-02, exercise 1, Category B:** `quota` = 1,154. It matches Category A's quota in the same exercise. Category B's quota is about 690 in the exercises around it. The wrong value makes this the only undersubscribed exercise in the data and the one with the largest unallocated gap (464). |
 | 🟠 Medium | COE | No bidding exercises from April to June 2020. |
 | 🟡 Low | Population | In 2013, *Goods-cum-passenger vehicles* dropped 23.6% and tax-exempted *Motorcycles and scooters* dropped 23.9%. These happen in the same year the car types were redefined, so they are likely reclassifications, not real changes in the number of vehicles. |
@@ -217,7 +217,20 @@ Both high-severity values look like they were copied from a neighbouring row. Th
 | Allowed missing values in the COE count and price columns | `quota`, `bids_success`, `bids_received` and `premium` converted to nullable integers (`Int64`) |
 | Set the 2 suspicious values to missing | Category D `premium` (2010-01, exercise 2) and Category B `quota` (2010-02, exercise 1) set to `pd.NA`. They were not replaced with an estimate. |
 
-No rows were removed. The cleaned data is only held in the notebook as `coe_clean` and `pop_clean`. It is not saved to a file.
+No rows were removed. The cleaned data is saved as:
+
+| File | Rows | What changed from the original |
+|---|---|---|
+| `data/COEBiddingResultsPrices_clean.csv` | 1,980 | No thousands separators. The 2 suspicious values are empty cells. `month` stays as `YYYY-MM` text. |
+| `data/AnnualMotorVehiclePopulationbyVehicleType_clean.csv` | 412 | No value changes. Saved so both datasets can be loaded from the cleaned set. |
+
+To load the cleaned COE data with the empty cells kept as missing integers:
+
+```python
+coe = pd.read_csv('data/COEBiddingResultsPrices_clean.csv',
+                  dtype={'quota': 'Int64', 'bids_success': 'Int64', 'bids_received': 'Int64', 'premium': 'Int64'})
+coe['date'] = pd.to_datetime(coe['month'])
+```
 
 ## 4.5 Things to Keep in Mind When Analysing
 
