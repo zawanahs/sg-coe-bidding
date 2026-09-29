@@ -174,36 +174,28 @@ The profiling and cleaning steps are in [`code/data-cleaning.ipynb`](code/data-c
 
 ## 4.1 What Was Checked
 
-For each dataset, the notebook checks:
-- **Formatting:** nulls, empty strings, leading or trailing spaces, and numbers stored as text
-- **Grain:** whether each row is unique on its expected key
-- **Time coverage:** the date range and any gaps in it
-- **Numeric profile:** min, max, percentiles, skew, zeros and negatives
-- **Business rules:** for example, `bids_success` should never be more than `quota` or `bids_received`
-- **Suspicious values:** unusually large jumps between one period and the next
+For each dataset, the checks cover the following:
+- **Formatting:** whether there are missing values or nulls, empty strings, leading or trailing spaces, and numbers stored as text
+- **Unit:** whether each row is unique based on understanding of the data, so this can identify any duplicated records
+- **Time coverage:** since both datasets are time series, to review the date range and identify any gaps in it
+- **Data profile:** for numeric fields, understand the data profile using min, max, percentiles, skew, zeros and negatives
+- **Reasonableness check:** `bids_success` should never be more than `quota` or `bids_received`
+- **Suspicious values:** unusually large jumps between one period and the next as these may indicate data quality issue
 
 ## 4.2 Key Facts About the Data
 
 **COE Bidding Results**
 
-| Check | Result |
-|---|---|
-| Grain | One row per `month` × `bidding_no` × `vehicle_class`, with no duplicates. Every exercise has all 5 categories. |
-| Formatting | No nulls, blanks or stray spaces. The only problem is the thousands separators in `bids_success` and `bids_received`. |
-| Time coverage | 198 months, not 201: **April to June 2020 are missing** because bidding was suspended during the COVID-19 circuit breaker. |
-| Business rules | `bids_success` never exceeds `quota` or `bids_received`. About 81% of exercises leave a few COEs unallocated (median 4). |
-| Distributions | Quota and bids are right-skewed. Premium has two groups: Category D (motorcycles, median about $6k) sits far below the car categories (median about $49k to $70k). |
-| Round numbers | About 19% of premiums end in `000` or `001`. This is expected, because bidders choose round numbers. |
+| Check | COE Bidding Results | Annual Motor Vehicle Population |
+| --- | --- | --- |
+| Unit | One row per `month` × `bidding_no` × `vehicle_class`, with no duplicates. Every exercise has all 5 categories. | One row per `year` × `category` × `type`, with no duplicates. |
+| Formatting | No missing values/nulls, blanks or stray spaces. **The only problem is the thousands separators in `bids_success` and `bids_received`.** | No missing values/nulls, blanks or stray spaces. All values in `number` are whole numbers.<br><br>*Motorcycles and Scooters* (a category) and *Motorcycles and scooters* (a type under Tax Exempted Vehicles) differ only in capitalisation. Don't join on `type` alone. |
+| Time coverage | 198 months, not 201: **April to June 2020 are missing** because bidding was suspended during the COVID-19 circuit breaker. | 2005 to 2024 with no gaps. There are 20 types per year up to 2012 and 21 from 2013, because of the change from *Rental cars* to the two *Private Hire* types. |
+| Reasonableness check | `bids_success` never exceeds `quota` or `bids_received`. About 81% of exercises leave a few COEs unallocated (median 4). |  |
+| Distributions | Quota and bids are right-skewed. Premium has two groups: Category D (motorcycles, median about $6k) sits far below the car categories (median about $49k to $70k). | Heavily right-skewed (median about 9.5k, max 540k), because *Private cars* is much larger than every other type. |
+| Round numbers | About 19% of premiums end in `000` or `001`. This is expected, because bidders choose round numbers. |  |
 
-**Annual Motor Vehicle Population**
 
-| Check | Result |
-|---|---|
-| Grain | One row per `year` × `category` × `type`, with no duplicates. |
-| Formatting | No nulls, blanks or stray spaces. All values in `number` are whole numbers. |
-| Time coverage | 2005 to 2024 with no gaps. There are 20 types per year up to 2012 and 21 from 2013, because of the change from *Rental cars* to the two *Private Hire* types. |
-| Distributions | Heavily right-skewed (median about 9.5k, max 540k), because *Private cars* is much larger than every other type. |
-| Naming | *Motorcycles and **S**cooters* (a category) and *Motorcycles and **s**cooters* (a type under Tax Exempted Vehicles) differ only in capitalisation. Don't join on `type` alone. |
 
 ## 4.3 Issues Found
 
