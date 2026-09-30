@@ -154,7 +154,7 @@ quota  ◄── set mainly from ───────────────�
 
 **Questions these datasets can help frame:**
 - **Timing:** are premiums noticeably different by season or between the first and second exercise?
-- **Supply outlook:** quotas are announced for each quarter ahead of time. How does a change in announced supply relate to the price?
+- **Supply outlook:** quotas are announced ahead of each quota period (February to April, May to July, August to October, November to January). How does a change in announced supply relate to the price?
 - **Replacement waves:** a large number of cars registered about 10 years ago could mean more COEs becoming available soon. Does past car population growth help anticipate future supply?
 - **Choice of car:** how much can be saved by choosing a car that qualifies for Category A instead of B, including electric cars?
 - **Other ways to own a car:** how common are off-peak cars, and is there a trend towards using private hire or rental cars instead of owning?
@@ -170,7 +170,7 @@ quota  ◄── set mainly from ───────────────�
 
 # 4. Data Exploration
 
-The profiling and cleaning steps are in [`code/data-cleaning.ipynb`](code/data-cleaning.ipynb). It reads both files from `data/`, charts the distribution of each numeric field, and saves cleaned copies as new `_clean.csv` files. The original files are not changed.
+The profiling, cleaning and exploration steps are in [`code/data-cleaning-and-exploration.ipynb`](code/data-cleaning-and-exploration.ipynb). It reads both files from `data/`, charts the distribution of each numeric field, and saves cleaned copies as new `_clean.csv` files. The original files are not changed.
 
 ## 4.1 What Was Checked
 
@@ -232,13 +232,77 @@ coe = pd.read_csv('data/COEBiddingResultsPrices_clean.csv',
 coe['date'] = pd.to_datetime(coe['month'])
 ```
 
-## 4.5 Things to Keep in Mind When Analysing
+## 4.5 Insights from Exploration
 
-- **Split by `vehicle_class`.** Across all rows, quota and premium look unrelated (r ≈ −0.07). Within each category, a bigger quota goes with a lower premium (Spearman: E −0.83, B −0.50, C −0.37, A −0.30). Category D is the exception (+0.29).
-- **Categories A, B, C and E move together** (premium correlation ≥ 0.9), and Category E tracks B almost exactly. **Category D moves largely on its own** (r ≈ 0.5).
-- **Allow for the 2020 gap** when calculating lags, the 3-month PQP or seasonality. The exercises either side of it are not consecutive.
-- **2020 and 2026 cover only 9 months each**, so don't compare their yearly totals directly with full years.
-- **Treat 2012 → 2013 as a break** in the population series.
-- **The two exercises in a month are almost the same:** the median premium change from exercise 1 to exercise 2 is under 1% in every category.
+**COE bidding, 2010 to 2026**
+- **Supply and price move in opposite directions over a roughly 10-year cycle.** The yearly quota rose from about 41,000 (2013) to 112,000 (2017), then fell back to about 43,000 (2022). Premiums were lowest around 2018 to 2019 (about $30,000 to $40,000 for Categories A and B) and have since risen to records above $130,000.
+- **COE revenue reached a record of about $6.5 billion in 2025**, driven by the high premiums.
+
+**Vehicle population, 2005 to 2024**
+- **The total grew fast, then stopped.** It rose from 755,000 (2005) to about 970,000 (2012), stayed almost flat until 2020 as the allowed growth rate was cut, and passed 1 million in 2024.
+- **By category:** *Tax Exempted Vehicles* grew fastest (+90%) and cars grew 50%. Motorcycles (+6%) and goods vehicles (+12%) barely changed. **Taxis fell by more than half** from their 2014 peak (28,700 to 13,100).
+- **A shift towards ride-hailing.** From 2014 to 2017, *Private Hire (Chauffeur)* cars rose by about 46,000 while private cars fell by about 38,000, even though the COE quota was high. By 2024, private hire cars (both types) made up about 14% of all cars. The data shows the timing, not the cause: some private hire cars are converted private cars.
+- **Private cars** peaked at 540,063 in 2013 and have stayed between about 515,000 and 532,000 since 2019.
+- **Off-peak cars fell by 85%** from their 2010 peak (50,040 to 7,692).
+- **The 2013 reclassification is continuous:** *Rental cars* (14,862 in 2012) became *Private Hire (Self-Drive)* (15,782 in 2013), so the two can be joined into one series.
+- **Company cars jumped 26% in 2020** (24,610 to 30,966), much more than in any other year. This may be another reclassification and is worth checking with LTA.
+
+---
+
+# 5. Analysis
+
+The analysis is in [`code/analysis.ipynb`](code/analysis.ipynb). It focuses on the **potential car buyer** (Section 3.2), with one finding for the policymaker. Each question is answered first with a simple method that is easy to explain (grouped comparisons and percentiles), then with regression or a statistical test where it adds accuracy. All results describe the past and are ranges to plan with, not forecasts.
+
+**Preparation:** the two suspicious values are filled from neighbouring exercises for time-series work only, and flagged. Supply and price are compared by LTA quota period. The renewal price (PQP) is estimated as the average premium of the latest 6 exercises. Changes that would span the April to June 2020 gap are left out.
+
+| # | Question | Method | Key finding |
+|---|---|---|---|
+| 2 | How much can premiums move before I buy? | Change from each exercise to the same exercise 1, 3, 6 and 12 months later: median, 90th and 95th percentiles | Premiums rose over 3 to 6 months in about 60% of past cases (65% to 75% since February 2018). The typical change is small (Category B median +5% over 6 months), but the 90th percentile is large: **+22% within 3 months and +37% within 6 months** for B. |
+| 3 | Does the announced quota predict the premium? | Premium change grouped by quota change; regression of log changes with HAC standard errors and a robust check | **Quota cuts of more than 10% were followed by higher premiums in 78% to 91% of periods. Quota increases did not reliably lower them**, especially for A and E. A 10% quota cut goes with about **+2.5% to +2.8%** for A, B and E and **+8.5%** for motorcycles (D). Quota explains only 7% to 21% of car premium changes. |
+| 4 | When to bid? | Exercise 1 vs 2 (Wilcoxon test); month of the quota period and month of the year vs a 12-month trend (F-tests) | **No reliable timing effect for cars.** Motorcycles (D) were about 7% below trend in December and January, but this may not repeat. |
+| 5 | How much does Category A save over B? | Gap per exercise, compared across the 97kW rule (February 2014) and the electric car limit (May 2022); regression | A was cheaper in 95% of exercises, by a median of **$9,000 (16%)**. The gap follows the premium cycle, not the rule changes, and is **almost zero now ($1,110 in September 2026)**. |
+| 6 | Renew or replace at year 10? | Estimated PQP vs the current premium, split by whether premiums were rising or falling | When premiums had been rising, renewing was cheaper in about **80%** of cases (by about 4%). When falling, a new COE was cheaper in about 75%. The 5-year and 10-year renewals cost the same per year. |
+| 7 | Alternatives to owning a car | Vehicle types since 2013 vs the Category A premium | Rental and car-sharing cars nearly **doubled (+97%)** from 2013 to 2024, while private cars stayed flat (−3%). The COE alone now costs about **$1,100 a month** for a car. |
+
+**A note on method:** grouping by calendar quarter instead of LTA's quota periods overstated the quota effect by about 40% for Category A and 70% for Category E, and roughly doubled it for B. Using the right period mattered.
+
+---
+
+# 6. Recommendations
+
+**For a potential buyer of a Category A or B car:**
+
+| # | Recommendation | Confidence |
+|---|---|---|
+| 1 | **Budget a buffer above today's premium:** about **20% to 25%** if bidding within 3 months, **30% to 40%** within 6 months. This covered 9 out of 10 past cases. | High |
+| 2 | **Don't wait for prices to fall without a reason.** Premiums have usually been higher a few months later. | High |
+| 3 | **Watch the quota announcement.** If the next period's quota is cut by more than 10%, bid before it takes effect. A quota increase is not a reliable reason to wait. | Medium (only 9 to 19 large cuts per category) |
+| 4 | **Don't try to time the exercise or month** for a car. | High |
+| 5 | **Check the current A vs B gap** before choosing a car. The long-run saving is about $9,000, but it is almost zero today. | High |
+| 6 | **At year 10, renew if premiums have been rising; consider replacing if they have been falling.** The COE difference is usually only a few percent, so the car's condition matters more. | High for the direction; the effect is small |
+| 7 | **Compare owning with renting or car-sharing** if you drive occasionally. The COE alone costs about $1,100 a month. | The cost is exact; rental prices are not in these datasets |
+
+**For the policymaker:** cutting the quota raises premiums reliably, but raising it lowers them only a little. A 10% change in supply goes with about a 2.5% to 3% change in car premiums and explains a small share of their movement, so supply changes alone will not bring car premiums down much.
+
+**Limitations:**
+- Results describe January 2010 to September 2026 (COE) and 2005 to 2024 (population). They are not forecasts.
+- Only the COE premium is covered, not the car's price, taxes, dealer packages or running costs.
+- The PQP is estimated from the data and may differ slightly from LTA's published figure.
+- The findings are associations, not proof of cause and effect.
+
+---
+
+# 7. Web App Data
+
+A **COE planner web app** for car buyers is planned, with a Next.js front end on Vercel. [`code/web-app-data.ipynb`](code/web-app-data.ipynb) runs the analysis and saves the numbers the app needs to `outputs/coe_planner_data.json`:
+
+| App feature | From |
+|---|---|
+| "How much should I budget?" with a safety slider (75%, 90%, 95%) | Section 2 |
+| Quota signal when the next period's quota is announced | Section 3 |
+| Category A vs B saving | Section 5 |
+| Renew or replace at year 10 | Section 6 |
+
+Re-run the notebook when new COE results are published, so the app and the analysis use the same numbers.
 
 
